@@ -1,47 +1,7 @@
-
 const readline = require('readline');
-const figlet = require('figlet');
-const chalk = require('chalk');
+const {log, biglog, colorize, errorlog} = require('./out');
+const cmds = require('./cmds');
 
-/**
- * Dar color a un string
- * @param msg    El string al que hay que dar color
- * @param color  El color con el que pintar msg
- * @returns {string} Devuelve el string msg con el color indicado
- */
-const colorize = (msg, color) => {
-    if (typeof color !== "undefined"){
-        msg = chalk[color].bold(msg);
-    }
-    return msg;
-};
-/**
- * Escribir un mensaje de log
- * @param msg    Texto a escribir
- * @param color  Color del texto (optativo)
- */
-const log = (msg, color) => {
-    console.log(colorize(msg,color))
-};
-/**
- * Escribir un mensaje de log grande
- * @param msg    Texto a escribir
- * @param color  Color del texto (opt.)
- */
-const biglog = (msg, color) => {
-    log(
-        figlet.textSync(msg,{
-            horizontalLayout: 'full',
-            verticalLayout: 'default'
-        }), color)
-};
-/**
- * Escribe un mensaje de error
- * @param emsg Texto del mensaje de error
- */
-const errorlog = (emsg) => {
-    console.log(`${colorize("Error", "red")}: ${colorize(colorize(emsg, "red"), "bgYellowBright")}`)
-};
 // mensaje inicio
 biglog('CORE Quiz', 'green');
 
@@ -69,36 +29,36 @@ rl.on('line', (line) => {
             break;
         case 'help':
         case 'h':
-            helpCmd();
+            cmds.helpCmd(rl);
             break;
         case 'list':
-            listCmd();
+            cmds.listCmd(rl);
             break;
         case 'show':
-            showCmd(id);
+            cmds.showCmd(rl, id);
             break;
         case 'add':
-            addCmd();
+            cmds.addCmd(rl);
             break;
         case 'delete':
-            deleteCmd(id);
+            cmds.deleteCmd(rl, id);
             break;
         case 'edit':
-            editCmd(id);
+            cmds.editCmd(rl, id);
             break;
         case 'test':
-            testCmd(id);
+            cmds.testCmd(rl, id);
             break;
         case 'play':
         case 'p':
-            playCmd();
+            cmds.playCmd(rl);
             break;
         case 'credits':
-            creditsCmd();
+            cmds.creditsCmd(rl);
             break;
         case 'quit':
         case 'q':
-            quitCmd();
+            cmds.quitCmd(rl);
             break;
         default:
             log(`Comando desconocido: '${colorize(cmd, 'red')}'`);
@@ -110,90 +70,3 @@ rl.on('line', (line) => {
     log('Adiós, vuelve cuando quieras!');
     process.exit(0);
 });
-
-/**
- * Muestra la ayuda
- */
-const helpCmd = () => {
-    log("Comandos:");
-    log("  h|help - Muestra esta ayuda.");
-    log("  list - Listar los quizzes existentes.");
-    log("  show <id> - Muestra la pregunta y la respuesta el quiz indicado.");
-    log("  add - Añadir un nuevo quiz interactivamente.");
-    log("  delete <id> - Borrar el quiz indicado.");
-    log("  edit <id> - Editar el quiz indicado.");
-    log("  test <id> - Probar el quiz indicado.");
-    log("  p|play - Jugar a preguntar aleatoriamente todos los quizzes.");
-    log("  credits - Créditos.");
-    log("  q|quit - Salir del programa.");
-    rl.prompt();
-};
-/**
- * Lista todos los quizzes existentes en el modelo
- */
-const listCmd = () => {
-    log('Listar todos los quizzes existentes.');
-    rl.prompt();
-};
-/**
- * Muestra el quiz indicado en el parámetro: la pregunta y la respuesta
- * @param id Clave del quiz a mostrar
- */
-const showCmd = id => {
-    log('Mostrar el quiz indicado.');
-    rl.prompt();
-};
-/**
- * Añade un nuevo quiz modelo
- * Pregunta interactivamente por la pregunta y por la respuesta
- */
-const addCmd = () => {
-    log('Añadir un nuevo quiz.');
-    rl.prompt();
-};
-/**
- * Borra un quiz del modelo
- * @param id Clave del quiz a borrar en el modelo
- */
-const deleteCmd = id => {
-    log('Borrar el quiz indicado.');
-    rl.prompt();
-};
-/**
- * Edita un quiz del modelo
- * @param id Clave del quiz a editar en el modelo
- */
-const editCmd = id => {
-    log('Editar el quiz indicado.');
-    rl.prompt();
-};
-/**
- * Prueba un quiz, es decir, hace una pregunta del modelo a la que debemos contestar
- * @param id Clave del quiz a probar
- */
-const testCmd = id => {
-    log('Probar el quiz indicado.');
-    rl.prompt();
-};
-/**
- * Pregunta todos los quizzes existentes en el modelo en un orden aleatorio
- * Se gana el juego si se contesta a todos satisfactoriamente
- */
-const playCmd = () => {
-    log('Jugar.');
-    rl.prompt();
-};
-/**
- * Muestra los nombres de los autores de la práctica
- */
-const creditsCmd = () => {
-    log('Autor(es) de la práctica:');
-    log('  ALEJANDRO', 'green');
-    rl.prompt();
-};
-/**
- * Termina el programa
- */
-const quitCmd = () => {
-    rl.close();
-};
