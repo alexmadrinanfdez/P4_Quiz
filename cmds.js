@@ -24,7 +24,9 @@ exports.helpCmd = rl => {
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
  */
 exports.listCmd = rl => {
-    log('Listar todos los quizzes existentes.');
+    model.getAll().forEach((quiz, id) => {
+       log(`  [${colorize(id, 'magenta')}]: ${quiz.question}`)
+    });
     rl.prompt();
 };
 /**
@@ -33,17 +35,33 @@ exports.listCmd = rl => {
  * @param id Clave del quiz a mostrar
  */
 exports.showCmd = (rl,id) => {
-    log('Mostrar el quiz indicado.');
+    if (typeof id === "undefined") {
+        errorlog(`Falta el parámetro id.`);
+    } else {
+        try {
+            const quiz = model.getByIndex(id);
+            log(`  [${colorize(id, 'magenta')}]:  ${quiz.question} ${colorize('=>', 'magenta')} ${quiz.answer}`);
+        } catch (error) {
+            errorlog(error.message);
+        }
+    }
     rl.prompt();
 };
 /**
  * Añade un nuevo quiz modelo
  * Pregunta interactivamente por la pregunta y por la respuesta
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
+ * El funcionamiento de la función rl.question() es asíncrono
+ * Por ello, la llamada a rl.prompt() se debe hacer el callback de la segunda llamada a rl.question
  */
 exports.addCmd = rl => {
-    log('Añadir un nuevo quiz.');
-    rl.prompt();
+    rl.question(colorize(' Introduzca una pregunta: ', 'red'), question => {
+        rl.question(colorize(' Introduzca la respuesta: ', 'red'), answer => {
+            model.add(question, answer);
+            log(` ${colorize('Se ha añadido', 'magenta')}: ${question} ${colorize('=>', 'magenta')} ${answer}`);
+            rl.prompt();
+        });
+    });
 };
 /**
  * Borra un quiz del modelo
@@ -51,17 +69,44 @@ exports.addCmd = rl => {
  * @param id Clave del quiz a borrar en el modelo
  */
 exports.deleteCmd = (rl, id) => {
-    log('Borrar el quiz indicado.');
+    if (typeof id === "undefined") {
+        errorlog(`Falta el parámetro id.`);
+    } else {
+        try {
+            model.deleteByIndex(id);
+        } catch (error) {
+            errorlog(error.message);
+        }
+    }
     rl.prompt();
 };
 /**
  * Edita un quiz del modelo
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
  * @param id Clave del quiz a editar en el modelo
+ * El funcionamiento de la función rl.question() es asíncrono
+ * Por ello, la llamada a rl.prompt() se debe hacer el callback de la segunda llamada a rl.question
  */
 exports.editCmd = (rl, id) => {
-    log('Editar el quiz indicado.');
-    rl.prompt();
+    if (typeof id === "undefined") {
+        errorlog(`Falta el parámetro id.`);
+        rl.prompt();
+    } else {
+        try {
+            const quiz = model.getByIndex(id);
+            process.stdout.isTTY && setTimeout(() => {rl.write(quiz.question)},0); // simula escritura por pantalla
+            rl.question(colorize(' Introduzca una pregunta: ', 'red'), question => {
+                process.stdout.isTTY && setTimeout(() => {rl.write(quiz.answer)},0); // simula escritura por pantalla
+                rl.question(colorize(' Introduzca la respuesta: ', 'red'), answer => {
+                    model.update(id, question, answer);
+                    log(` Se ha cambiado el quiz ${colorize(id, 'magenta')} por: ${question} ${colorize('=>', 'magenta')} ${answer}`);
+                    rl.prompt();
+                });
+            });
+        } catch (error) {
+            errorlog(error.message);
+        }
+    }
 };
 /**
  * Prueba un quiz, es decir, hace una pregunta del modelo a la que debemos contestar

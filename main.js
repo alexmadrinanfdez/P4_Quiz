@@ -67,6 +67,6 @@ rl.on('line', (line) => {
             break;
     }
 }).on('close', () => {
-    log('Adiós, vuelve cuando quieras!');
+    log('Adiós, vuelve cuando quieras!', 'cyanBright');
     process.exit(0);
 });
