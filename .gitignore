@@ -1,2 +1,5 @@
 # Webstorm directory
 .idea/
+
+# directory with questions (quizzes)
+quizzes.json
