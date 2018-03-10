@@ -144,7 +144,7 @@ exports.testCmd = (rl, id) => {
  */
 exports.playCmd = rl => {
     let score = 0;
-    let toBeAsked = [model.count()]; // preguntas que quedan por contestar
+    let toBeAsked = [model.count()]; // ids de preguntas que quedan por contestar
     for (i = 0; i < model.count(); i++){
         toBeAsked[i] = i;
     }

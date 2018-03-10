@@ -3,3 +3,6 @@
 
 # directory with questions (quizzes)
 quizzes.json
+
+# execution directory
+node_modules/
