@@ -224,47 +224,44 @@ exports.testCmd = (rl, id) => {
  */
 exports.playCmd = rl => {
     let score = 0;
-    let n = 0;
-    models.quiz.count()
-        .then(count => {
-            n = count;
-        });
-    let toBeAsked = [n]; // ids de preguntas que quedan por contestar
-    for (i = 0; i < n; i++) {
-        toBeAsked[i] = i;
-    }
+    let toBeAsked = []; // preguntas que quedan por contestar
     const playOneMore = () => {
-        return new Promise((resolve, reject) => {
+        new Sequelize.Promise((resolve,reject) => {
             if (toBeAsked.length === 0) {
-                resolve(log('No hay nada más que preguntar.'));
+                log('No hay nada más que preguntar.');
+                log('Fin del juego. Aciertos:');
+                biglog(score, 'magenta');
+                rl.prompt();
             } else {
-                let id_p = Math.round(Math.random() * (toBeAsked.length - 1)); // índice del array local
-                let id_q = toBeAsked[id_p]; // índice del array de quizzes
-                toBeAsked.splice(id_p, 1); // borra la pregunta
-                validateId(id_q)
-                    .then(id => models.quiz.findById(id))
-                    .then(quiz => {
-                        makeQuestion(rl, `${quiz.question}? `)
-                            .then(answer => {
-                                if (answer.toLowerCase().trim() === quiz.answer.toLowerCase()) { // que no sea 'case sensitive'
-                                    score++;
-                                    log(`CORRECTO - Lleva ${score} aciertos.`);
-                                    playOneMore();
-                                } else {
-                                    resolve(log(`INCORRECTO - Lleva ${score} aciertos.`))
-                                }
-                            })
+                let id = Math.round(Math.random() * (toBeAsked.length - 1)); // índice del array local
+                let quiz = toBeAsked[id];
+                toBeAsked.splice(id, 1);
+                makeQuestion(rl, `${quiz.question}? `)
+                    .then(answer => {
+                        if (answer.toLowerCase().trim() === quiz.answer.toLowerCase()) { // que no sea 'case sensitive'
+                            score++;
+                            log(`CORRECTO - Lleva ${score} aciertos.`);
+                            playOneMore();
+                        } else {
+                            log(`INCORRECTO - Lleva ${score} aciertos.`);
+                            log('Fin del juego. Aciertos:');
+                            biglog(score, 'magenta');
+                            rl.prompt();
+                        }
                     })
             }
         })
     };
-    playOneMore()
-        .then(() => {
-            log('Fin del juego. Aciertos:');
-            biglog(score, 'magenta');
+    models.quiz.count()
+        .then(count => {
+            toBeAsked = [count];
+        })
+        .then(() => models.quiz.findAll())
+        .each (quiz => {
+            toBeAsked[quiz.id - 1] = quiz;
         })
         .then(() => {
-            rl.prompt();
+            playOneMore();
         })
 };
 /**
