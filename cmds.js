@@ -1,6 +1,47 @@
-const model = require('./model');
+const Sequelize = require('sequelize');
+const {models} = require('./model');
 const {log, biglog, colorize, errorlog} = require('./out');
 
+// funciones auxiliares
+/**
+ * Esta función devuelve una promesa que:
+ *    - Valida que se ha introducido un valor para el parámetro
+ *    - Convierte el parámetro en un número entero
+ * Si todo va bien, la promesa se satisface y devuelve el valor de id a usar
+ * @param id Parámetro con el índice a validar
+ */
+const validateId = id => {
+    return new Sequelize.Promise((resolve, reject) => {
+        if (typeof  id === "undefined") {
+            reject(new Error(`Falta el parámetro <id>.`));
+        } else {
+            id = parseInt(id); // coger la parte entera y descartar el resto
+            if (Number.isNaN(id)) {
+                reject(new Error(`El valor del parámetro <id> no es un número.`));
+            } else {
+                resolve(id);
+            }
+        }
+    });
+};
+/**
+ * Esta función convierte la llamada rl.question(), basada en callbacks, en una llamada basada en promesas
+ * Devuelve una promesa que cuando se cumple, proporciona el texto introducido
+ * Entonces, la llamada a 'then' que hay que hacer con la llamada devuelta será:
+ *    .then (answer => {...})
+ * También colorea a rojo el texto de la pregunta, elimina espacios al principio y al final
+ * @param rl   Objeto readline usado para implementar el CLI
+ * @param text Pregunta que hay que hacer al usuario
+ */
+const makeQuestion = (rl, text) => {
+    return new Sequelize.Promise((resolve, reject) => {
+        rl.question(colorize(text, 'red'), answer => {
+            resolve(answer.trim());
+        })
+    })
+};
+
+// comandos
 /**
  * Muestra la ayuda
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
@@ -24,10 +65,16 @@ exports.helpCmd = rl => {
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
  */
 exports.listCmd = rl => {
-    model.getAll().forEach((quiz, id) => {
-       log(`  [${colorize(id, 'magenta')}]: ${quiz.question}`)
-    });
-    rl.prompt();
+    models.quiz.findAll()
+        .each(quiz => { // equivalente a un then() + forEach() -> Es un tipo de promesa especial
+                log(`  [${colorize(quiz.id, 'magenta')}]: ${quiz.question}`)
+        })
+        .catch(error => {
+            errorlog(error.message)
+        })
+        .then(() => {
+            rl.prompt();
+        });
 };
 /**
  * Muestra el quiz indicado en el parámetro: la pregunta y la respuesta
@@ -35,17 +82,20 @@ exports.listCmd = rl => {
  * @param id Clave del quiz a mostrar
  */
 exports.showCmd = (rl,id) => {
-    if (typeof id === "undefined") {
-        errorlog(`Falta el parámetro id.`);
-    } else {
-        try {
-            const quiz = model.getByIndex(id);
-            log(`  [${colorize(id, 'magenta')}]:  ${quiz.question} ${colorize('=>', 'magenta')} ${quiz.answer}`);
-        } catch (error) {
+    validateId(id)
+        .then(id => models.quiz.findById(id))
+        .then(quiz => {
+            if (!quiz) {
+                throw new Error(`No existe un quiz asociado al id = ${id}.`);
+            }
+            log(`  [${colorize(quiz.id, 'magenta')}]: ${quiz.question} ${colorize('=>', 'magenta')} ${quiz.answer}`);
+        })
+        .catch(error => {
             errorlog(error.message);
-        }
-    }
-    rl.prompt();
+        })
+        .then(() => {
+            rl.prompt();
+        });
 };
 /**
  * Añade un nuevo quiz modelo
@@ -55,13 +105,29 @@ exports.showCmd = (rl,id) => {
  * Por ello, la llamada a rl.prompt() se debe hacer el callback de la segunda llamada a rl.question
  */
 exports.addCmd = rl => {
-    rl.question(colorize(' Introduzca una pregunta: ', 'red'), question => {
-        rl.question(colorize(' Introduzca la respuesta: ', 'red'), answer => {
-            model.add(question, answer);
-            log(` ${colorize('Se ha añadido', 'magenta')}: ${question} ${colorize('=>', 'magenta')} ${answer}`);
+    makeQuestion(rl, ' Introduzca una pregunta: ')
+        .then(q => {
+            return makeQuestion(rl, ' Introduzca la respuesta: ')
+                .then(a => {
+                    return {question: q, answer: a};
+                })
+        })
+        .then(quiz => {
+            return models.quiz.create(quiz);
+        })
+        .then((quiz) => {
+            log(` ${colorize('Se ha añadido', 'magenta')}: ${quiz.question} ${colorize('=>', 'magenta')} ${quiz.answer}`);
+        })
+        .catch(Sequelize.ValidationError, error => { // solo atrapa errores de validación
+            errorlog('El quiz es erróneo:');
+            error.errors.forEach(({message}) => errorlog(message));
+        })
+        .catch(error => { // atrapa el resto de errores
+            errorlog(error.message);
+        })
+        .then(() => {
             rl.prompt();
-        });
-    });
+        })
 };
 /**
  * Borra un quiz del modelo
@@ -69,16 +135,14 @@ exports.addCmd = rl => {
  * @param id Clave del quiz a borrar en el modelo
  */
 exports.deleteCmd = (rl, id) => {
-    if (typeof id === "undefined") {
-        errorlog(`Falta el parámetro id.`);
-    } else {
-        try {
-            model.deleteByIndex(id);
-        } catch (error) {
+    validateId(id)
+        .then(id => models.quiz.destroy({where: {id}}))
+        .catch(error => {
             errorlog(error.message);
-        }
-    }
-    rl.prompt();
+        })
+        .then(() => {
+            rl.prompt();
+        })
 };
 /**
  * Edita un quiz del modelo
@@ -88,26 +152,40 @@ exports.deleteCmd = (rl, id) => {
  * Por ello, la llamada a rl.prompt() se debe hacer el callback de la segunda llamada a rl.question
  */
 exports.editCmd = (rl, id) => {
-    if (typeof id === "undefined") {
-        errorlog(`Falta el parámetro id.`);
-        rl.prompt();
-    } else {
-        try {
-            const quiz = model.getByIndex(id);
+    validateId(id)
+        .then(id => models.quiz.findById(id))
+        .then(quiz => {
+            if (!quiz) {
+                throw new Error(`No existe un quiz asociado al id = ${id}.`);
+            }
             process.stdout.isTTY && setTimeout(() => {rl.write(quiz.question)},0); // simula escritura por pantalla
-            rl.question(colorize(' Introduzca una pregunta: ', 'red'), question => {
-                process.stdout.isTTY && setTimeout(() => {rl.write(quiz.answer)},0); // simula escritura por pantalla
-                rl.question(colorize(' Introduzca la respuesta: ', 'red'), answer => {
-                    model.update(id, question, answer);
-                    log(` Se ha cambiado el quiz ${colorize(id, 'magenta')} por: ${question} ${colorize('=>', 'magenta')} ${answer}`);
-                    rl.prompt();
-                });
-            });
-        } catch (error) {
+            return makeQuestion(rl, 'Introduzca la pregunta: ')
+                .then(q => {
+                    process.stdout.isTTY && setTimeout(() => {rl.write(quiz.answer)},0); // simula escritura por pantalla
+                    return makeQuestion(rl, 'Introduzca la respuesta: ')
+                        .then(a => {
+                            quiz.question = q;
+                            quiz.answer = a;
+                            return quiz;
+                        })
+                })
+        })
+        .then(quiz => {
+            return quiz.save();
+        })
+        .then(quiz => {
+            log(` Se ha cambiado el quiz ${colorize(quiz.id, 'magenta')} por: ${quiz.question} ${colorize('=>', 'magenta')} ${quiz.answer}`);
+        })
+        .catch(Sequelize.ValidationError, error => { // solo atrapa errores de validación
+            errorlog('El quiz es erróneo:');
+            error.errors.forEach(({message}) => errorlog(message));
+        })
+        .catch(error => { // atrapa el resto de errores
             errorlog(error.message);
+        })
+        .then(() => {
             rl.prompt();
-        }
-    }
+        })
 };
 /**
  * Prueba un quiz, es decir, hace una pregunta del modelo a la que debemos contestar
