@@ -1,8 +1,8 @@
 # Webstorm directory
 .idea/
 
-# directory with the quizzes
-quizzes.json
+# database with the quizzes
+quizzes.sqlite
 
 # modules directory (npm install)
 node_modules/
