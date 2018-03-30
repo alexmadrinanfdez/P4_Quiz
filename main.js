@@ -69,7 +69,7 @@ net.createServer((socket) => {
                 break;
             case 'quit':
             case 'q':
-                cmds.quitCmd(rl);
+                cmds.quitCmd(socket, rl);
                 break;
             default:
                 log(socket, `Comando desconocido: '${colorize(cmd, 'red')}'`);
@@ -79,7 +79,7 @@ net.createServer((socket) => {
         }
     }).on('close', () => {
         log(socket, 'Adiós, vuelve cuando quieras!', 'cyanBright');
-        process.exit(0);
+        // process.exit(0);
     });
 }).listen(3030);
 

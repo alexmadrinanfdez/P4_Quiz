@@ -286,6 +286,7 @@ exports.creditsCmd = (socket, rl) => {
  * Termina el programa
  * @param rl Objeto readline utilizado para implementar el CLI (Command Line Interpreter)
  */
-exports.quitCmd = rl => {
+exports.quitCmd = (socket, rl) => {
     rl.close();
+    socket.end();
 };
